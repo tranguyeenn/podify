@@ -22,24 +22,24 @@ def current():
     if current_track is not None:
         track_name = current_track['item']['name']
         artists = ', '.join([artist['name'] for artist in current_track['item']['artists']])
-        print(Style.BRIGHT + Fore.GREEN + f"Currently playing: {track_name} by {artists}")
+        print(Style.BRIGHT + Fore.GREEN + f"🎧 Currently playing: {track_name} by {artists}")
 
     else:
         print("No track is currently playing.")
 
 def pause():
     sp.pause_playback()
-    print("Playback paused.")
+    print("⏸ paused.")
 
 def next():
     sp.next_track()
-    print("skipped to next track.")
+    print("⏭ skipped.")
 
 
 def previous():
     try:
         sp.previous_track()
-        print("Previous track")
+        print("⏮ previous track")
     except SpotifyException as e:
         if e.http_status == 403:
             print()
@@ -50,7 +50,11 @@ def previous():
 
 def play():
     sp.start_playback()
-    print("Playback started.")
+    print("🎧 Playback started.")
+
+def exit():
+    print("Exiting...")
+    quit()
 
 while True:
     cmd = input("spotify> ").strip().lower()
@@ -65,5 +69,7 @@ while True:
         previous()
     elif cmd == "play":
         play()
+    elif cmd == "exit":
+        exit()
     else:
-        print("Commands: now, pause, next")
+        print("Commands: now, pause, next, previous, play, exit")
