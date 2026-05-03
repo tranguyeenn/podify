@@ -87,6 +87,8 @@ play      -> resume playback
 pause     -> pause playback
 next      -> skip track
 previous  -> go to previous track
+volume    -> control mac volume or spotify volume
+search    -> search and play
 quit      -> exit
 ```
 
@@ -100,13 +102,13 @@ quit      -> exit
 * Spotipy (Spotify Web API)
 * Colorama (terminal styling)
 * pyton-dotenv (loading env variable)
+* subprocess (control mac volume)
 
 ## Future Improvements
-* Search + play songs
-* Volume control
 * Queue management
 * Real-time now-playing updates
 * Keyboard shortcuts
+* Small UI for terminal
 
 ## License
 MIT
