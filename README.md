@@ -7,6 +7,8 @@ Control Spotify directly from your terminal like a civilized engineer.
 * View currently playing song
 * Control playback from terminal
 * Colored terminal output (because we have standards)
+* The choice between a simple terminal commands or a simple terminal UI
+* The queue is shown
 
 ## Demo
 ```bash
@@ -70,14 +72,16 @@ SPOTIPY_REDIRECT_URI=http://127.0.0.1:8888/callback
 
 ## Usage
 
-Run the CLI:
+Run the text CLI (from the repo root so imports resolve):
 
 ```bash
-python podify.py
+python -m podify
 ```
-or 
+
+Run the iPod-style TUI:
+
 ```bash
-python3 podify.py
+python -m podify.ui
 ```
 
 Available commands:
@@ -108,7 +112,7 @@ quit      -> exit
 * Queue management
 * Real-time now-playing updates
 * Keyboard shortcuts
-* Small UI for terminal
+* Playlist integration
 
 ## License
 MIT
