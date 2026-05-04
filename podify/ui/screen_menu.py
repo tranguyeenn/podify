@@ -1,3 +1,5 @@
+"""Reusable menu screen renderer for main/playback lists."""
+
 import curses
 
 from podify.ui.constants import FRAME_INNER_W
@@ -8,12 +10,14 @@ from podify.ui.text_layout import ellip_tw, frame_bottom_rule, pad_to_width, tex
 
 
 def draw_menu(stdscr, title, items):
+    # Draw top frame and bail if terminal is too small.
     frame = draw_frame(stdscr, title)
     if frame == (None, None):
         return
 
     start_y, start_x = frame
 
+    # Render each menu row with reverse-video on selected index.
     for i, item in enumerate(items):
         y = start_y + 3 + i
         sel2 = "> " if i == state.selected else "  "
@@ -31,6 +35,7 @@ def draw_menu(stdscr, title, items):
         )
         safe_addstr(stdscr, y, start_x + 1 + FRAME_INNER_W, "│")
 
+    # Footer area: status + click-wheel + keyboard hint.
     bottom = start_y + 3 + len(items)
     safe_addstr(stdscr, bottom, start_x, frame_bottom_rule())
     safe_addstr(stdscr, bottom + 2, start_x, f"Status: {state.status[:30]}")

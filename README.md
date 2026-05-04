@@ -52,6 +52,47 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
+## Run Podify (Step-by-step)
+
+Use these exact commands from the repo root:
+
+```bash
+cd /Users/trangnguyen/dev/podify
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install --upgrade pip
+python3 -m pip install -r requirements.txt
+```
+
+Create `.env` in the repo root:
+
+```env
+SPOTIPY_CLIENT_ID=your_client_id
+SPOTIPY_CLIENT_SECRET=your_client_secret
+SPOTIPY_REDIRECT_URI=http://127.0.0.1:8888/callback
+```
+
+Then run one of these:
+
+```bash
+# Text CLI
+python3 -m podify
+
+# iPod-style UI
+python3 -m podify.ui
+```
+
+On first run, a browser window opens for Spotify auth. Approve access and return to terminal.
+
+### Re-auth (important after scope updates)
+
+If you get `Insufficient client scope` errors, clear cached token and log in again:
+
+```bash
+rm -f .cache
+python3 -m podify.ui
+```
+
 ## Setup (Spotify API)
 
 1. Go to: https://developer.spotify.com/dashboard
@@ -75,13 +116,13 @@ SPOTIPY_REDIRECT_URI=http://127.0.0.1:8888/callback
 Run the text CLI (from the repo root so imports resolve):
 
 ```bash
-python -m podify
+python3 -m podify
 ```
 
 Run the iPod-style TUI:
 
 ```bash
-python -m podify.ui
+python3 -m podify.ui
 ```
 
 Available commands:
@@ -105,7 +146,7 @@ quit      -> exit
 * Python
 * Spotipy (Spotify Web API)
 * Colorama (terminal styling)
-* pyton-dotenv (loading env variable)
+* python-dotenv (loading env variables)
 * subprocess (control mac volume)
 
 ## Future Improvements

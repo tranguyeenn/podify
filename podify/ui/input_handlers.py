@@ -1,7 +1,9 @@
+"""Keyboard input dispatcher for all TUI screens."""
+
 import curses
 
 from podify.config import sp
-from podify.commands import next_track, pause, play_track_uri, previous, search_tracks
+from podify.commands import next_track, pause, play_playlist_track_in_order, previous
 from podify.mac_controls import nudge_mac_volume
 
 from podify.ui import state
@@ -14,21 +16,30 @@ from podify.ui.readouts import (
     volume_meter_line,
 )
 from podify.ui.constants import QUEUE_VISIBLE_ROWS
-from podify.ui.sync import load_queue_preview, reset_search_pick, sync_search_scroll
+from podify.ui.sync import (
+    load_library_playlist_tracks,
+    load_library_preview,
+    load_queue_preview,
+    sync_library_scroll,
+)
 from podify.ui.text_layout import ellip_tw
 
 
 def handle_key(key) -> bool:
+    # For menu-like screens, decide which item list navigation should use.
     current_items = main_menu if state.screen == "main" else playback_menu
 
+    # Global quit hotkey.
     if key == ord("q"):
         return False
 
+    # Global "menu/home" hotkey.
     if key == ord("m"):
         go_back()
         return True
 
     if state.screen in ["main", "playback"]:
+        # Shared up/down menu movement.
         if key in [ord("w"), curses.KEY_UP]:
             state.selected = (state.selected - 1) % len(current_items)
 
@@ -36,11 +47,13 @@ def handle_key(key) -> bool:
             state.selected = (state.selected + 1) % len(current_items)
 
         elif key in [10, 13]:
+            # Enter dispatches to the current screen selector.
             if state.screen == "main":
                 return select_main()
             return select_playback()
 
     elif state.screen == "now":
+        # Space toggles pause from the Now Playing screen.
         if key == ord(" "):
             try:
                 pause(sp)
@@ -50,6 +63,7 @@ def handle_key(key) -> bool:
                 state.status = f"Error: {e}"
 
         elif key in [ord("a"), curses.KEY_LEFT]:
+            # Left = previous track.
             try:
                 previous(sp)
                 invalidate_now_playing_cache()
@@ -58,6 +72,7 @@ def handle_key(key) -> bool:
                 state.status = f"Error: {e}"
 
         elif key in [ord("d"), curses.KEY_RIGHT]:
+            # Right = next track.
             try:
                 next_track(sp)
                 invalidate_now_playing_cache()
@@ -65,76 +80,54 @@ def handle_key(key) -> bool:
             except Exception as e:
                 state.status = f"Error: {e}"
 
-    elif state.screen == "search":
-        if state.search_pick_mode and state.search_results:
-            if key in (curses.KEY_UP, ord("w")):
-                state.search_pick_ix = (
-                    state.search_pick_ix - 1 if state.search_pick_ix else len(state.search_results) - 1
-                )
-                sync_search_scroll()
-            elif key in (curses.KEY_DOWN, ord("s")):
-                state.search_pick_ix = (state.search_pick_ix + 1) % len(state.search_results)
-                sync_search_scroll()
-            elif key in (10, 13):
-                try:
-                    pick = state.search_results[state.search_pick_ix]
-                    play_track_uri(sp, pick["uri"], pick)
+    elif state.screen == "library":
+        # Library flow: playlists -> tracks -> play.
+        if key in (curses.KEY_UP, ord("w")) and state.library_rows:
+            # Wrap around when moving above first item.
+            state.library_pick_ix = (
+                state.library_pick_ix - 1 if state.library_pick_ix else len(state.library_rows) - 1
+            )
+            sync_library_scroll()
+        elif key in (curses.KEY_DOWN, ord("s")) and state.library_rows:
+            # Wrap around when moving below last item.
+            state.library_pick_ix = (state.library_pick_ix + 1) % len(state.library_rows)
+            sync_library_scroll()
+        elif key in (10, 13) and state.library_rows:
+            try:
+                pick = state.library_rows[state.library_pick_ix]
+                if state.library_mode == "playlists":
+                    # Enter on playlist drills into its track list.
+                    pid = pick.get("id") or ""
+                    pname = pick.get("name") or "Playlist"
+                    load_library_playlist_tracks(pid, pname)
+                    state.status = (
+                        f"{len(state.library_rows)} tracks in {state.library_playlist_name}"
+                        if state.library_rows
+                        else f"No tracks in {state.library_playlist_name}"
+                    )
+                else:
+                    # Enter on track starts playlist context at this row (iPod-like order).
+                    play_playlist_track_in_order(sp, state.library_playlist_id, pick["uri"], pick)
                     invalidate_now_playing_cache()
                     state.status = ellip_tw(
-                        "Playing " + pick.get("name", "?"),
+                        "Playing from playlist: " + pick.get("name", "?"),
                         80,
                     )
-                    reset_search_pick()
-                    state.search_text = ""
-                except Exception as e:
-                    state.status = f"Error: {e}"
-            elif key in (27, 9):
-                reset_search_pick()
-                state.status = "Query"
-            elif key in (curses.KEY_BACKSPACE, 127, 8):
-                reset_search_pick()
-                state.search_text = state.search_text[:-1]
-                state.status = ""
-            elif 32 <= key <= 126:
-                pass
-            return True
-
-        if key in (10, 13):
-            query = state.search_text.strip()
-            if not query:
-                state.status = "Type something to search."
-                return True
-            try:
-                state.search_results = search_tracks(sp, query, limit=30)
-                if not state.search_results:
-                    reset_search_pick()
-                    state.status = "No results."
-                    return True
-                state.search_pick_mode = True
-                state.search_pick_ix = 0
-                state.search_scroll = 0
-                sync_search_scroll()
-                state.status = f"{len(state.search_results)} results"
             except Exception as e:
-                reset_search_pick()
                 state.status = f"Error: {e}"
-            return True
-
-        elif key in (27,):
-            state.search_text = ""
-            reset_search_pick()
-            state.status = ""
-            return True
-
-        elif key in [curses.KEY_BACKSPACE, 127, 8]:
-            state.search_text = state.search_text[:-1]
-
-        elif 32 <= key <= 126:
-            state.search_text += chr(key)
-
+        elif key in (27, curses.KEY_LEFT):
+            # Back from tracks to playlist list without leaving Library.
+            if state.library_mode == "tracks":
+                load_library_preview()
+                state.status = (
+                    f"{len(state.library_rows)} playlists"
+                    if state.library_rows
+                    else "No playlists from Spotify"
+                )
         return True
 
     elif state.screen == "volume":
+        # Enter applies typed Spotify volume value.
         if key in [10, 13]:
             if state.volume_text.strip():
                 try:
@@ -153,6 +146,7 @@ def handle_key(key) -> bool:
                 state.status = volume_meter_line(force=True)
 
         elif key in (ord("+"), ord("=")):
+            # Mac output volume up one step.
             try:
                 nudge_mac_volume(1)
                 invalidate_volume_line_cache()
@@ -161,6 +155,7 @@ def handle_key(key) -> bool:
                 state.status = f"Mac volume: {e}"
 
         elif key == ord("-"):
+            # Mac output volume down one step.
             try:
                 nudge_mac_volume(-1)
                 invalidate_volume_line_cache()
@@ -169,12 +164,15 @@ def handle_key(key) -> bool:
                 state.status = f"Mac volume: {e}"
 
         elif key in [curses.KEY_BACKSPACE, 127, 8]:
+            # Remove one digit from volume input.
             state.volume_text = state.volume_text[:-1]
 
         elif chr(key).isdigit() and len(state.volume_text) < 3:
+            # Accept up to 3 digits (0-100 validated on submit).
             state.volume_text += chr(key)
 
     elif state.screen == "queue":
+        # Queue refresh key.
         if key == ord("r"):
             load_queue_preview()
             state.status = (
@@ -183,9 +181,11 @@ def handle_key(key) -> bool:
                 else (ellip_tw(state.queue_error, 80) if state.queue_error else "No upcoming tracks")
             )
         elif key in (curses.KEY_UP, ord("w")):
+            # Queue viewport scroll up.
             if state.queue_rows:
                 state.queue_scroll = max(0, state.queue_scroll - 1)
         elif key in (curses.KEY_DOWN, ord("s")):
+            # Queue viewport scroll down.
             if state.queue_rows:
                 max_scr = max(0, len(state.queue_rows) - QUEUE_VISIBLE_ROWS)
                 state.queue_scroll = min(max_scr, state.queue_scroll + 1)

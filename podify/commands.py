@@ -1,7 +1,10 @@
+"""Spotify command helpers shared by CLI and TUI flows."""
+
 from spotipy.exceptions import SpotifyException
 from colorama import Fore, Style
 
 def current(sp):
+    # Return compact "track - artists" string for current playback.
     current_track = sp.current_user_playing_track()
 
     if current_track is not None and current_track["item"] is not None:
@@ -15,14 +18,17 @@ def current(sp):
     return "No track is currently playing."
 
 def pause(sp):
+    # Pause active Spotify playback.
     sp.pause_playback()
     print("⏸ paused.")
 
 def next_track(sp):
+    # Skip to next track in current playback context.
     sp.next_track()
     print("⏭ skipped.")
 
 def previous(sp):
+    # Previous track can be blocked by Spotify in some contexts.
     try:
         sp.previous_track()
         print("⏮ previous track")
@@ -35,6 +41,7 @@ def previous(sp):
             print(Fore.RED + f"Spotify error: {e}")
 
 def play(sp):
+    # Resume playback on active Spotify device/context.
     try:
         sp.start_playback()
         print("▶️  Playback started.")
@@ -57,6 +64,7 @@ def get_spotify_volume_percent(sp):
 
 
 def handle_volume(sp, args):
+    # CLI parser for `volume <0-100>`.
     if len(args) != 1:
         print("Usage: volume <0-100>")
         return
@@ -76,14 +84,54 @@ def handle_volume(sp, args):
     except Exception:
         print("Failed to set Spotify volume. Is Spotify active?")
 
-def search_tracks(sp, query: str, limit: int = 20):
-    """Return Spotify track payload list for UI; caller plays via uri."""
-    q = (query or "").strip()
-    if not q:
-        return []
+def saved_library_tracks(sp, limit: int = 50):
+    """Fetch the user's saved tracks from Spotify's library endpoint."""
+    # Spotify caps this endpoint at 50 per request.
+    cap = min(max(1, int(limit)), 50)
+    resp = sp.current_user_saved_tracks(limit=cap, offset=0)
+    rows = []
+    for item in (resp or {}).get("items", []):
+        # Endpoint wraps each row as {added_at, track}.
+        tr = (item or {}).get("track")
+        # Only keep playable tracks with a URI.
+        if isinstance(tr, dict) and tr.get("uri"):
+            rows.append(tr)
+    return rows
 
-    resp = sp.search(q=q, type="track", limit=min(max(1, limit), 50))
-    return resp.get("tracks") and resp["tracks"].get("items") or []
+
+def user_library_playlists(sp, limit: int = 50):
+    """Fetch the user's playlists for Library playlist-first navigation."""
+    # Includes public/private/collab playlists when scopes allow it.
+    cap = min(max(1, int(limit)), 50)
+    resp = sp.current_user_playlists(limit=cap, offset=0)
+    rows = []
+    for item in (resp or {}).get("items", []):
+        if not isinstance(item, dict):
+            continue
+        if not item.get("id"):
+            continue
+        rows.append(item)
+    return rows
+
+
+def playlist_tracks(sp, playlist_id: str, limit: int = 50):
+    """Fetch playable tracks from a playlist."""
+    if not playlist_id:
+        return []
+    cap = min(max(1, int(limit)), 100)
+    resp = sp.playlist_items(
+        playlist_id,
+        limit=cap,
+        offset=0,
+        additional_types=("track",),
+    )
+    rows = []
+    for item in (resp or {}).get("items", []):
+        tr = (item or {}).get("track")
+        # Keep only tracks with a URI so Enter can play reliably.
+        if isinstance(tr, dict) and tr.get("uri"):
+            rows.append(tr)
+    return rows
 
 
 QUEUE_PREVIEW_MAX = 30
@@ -178,6 +226,45 @@ def _start_playback(sp, *, device_id: str | None, **kwargs) -> None:
         sp.start_playback(device_id=device_id, **kwargs)
     else:
         sp.start_playback(**kwargs)
+
+
+def play_playlist_track_in_order(sp, playlist_id: str, track_uri: str, track_payload=None):
+    """Start playlist context at the chosen track so queue stays in playlist order."""
+    if not track_uri:
+        return
+    pid = str(playlist_id or "").strip()
+    if not pid:
+        # Without a playlist context, fall back to generic single-track playback.
+        play_track_uri(sp, track_uri, track_payload)
+        return
+
+    dev = _playback_device_id(sp)
+    p_uri = pid if pid.startswith("spotify:playlist:") else f"spotify:playlist:{pid}"
+    try:
+        # Force deterministic playlist order (iPod behavior) before context start.
+        try:
+            if dev:
+                sp.shuffle(False, device_id=dev)
+            else:
+                sp.shuffle(False)
+        except Exception:
+            # Ignore pre-toggle failures; we'll retry after playback starts.
+            pass
+
+        # Context playback preserves playlist sequence from the selected offset.
+        _start_playback(sp, device_id=dev, context_uri=p_uri, offset={"uri": track_uri})
+        # Some Spotify clients flip shuffle on context switch; force OFF again.
+        try:
+            dev2 = _playback_device_id(sp)
+            if dev2:
+                sp.shuffle(False, device_id=dev2)
+            else:
+                sp.shuffle(False)
+        except Exception:
+            pass
+    except Exception:
+        # Fallback keeps playback resilient if context start fails.
+        play_track_uri(sp, track_uri, track_payload)
 
 
 def _search_tracks_many(sp, q: str, limit: int = 40, offset: int = 0):
@@ -298,10 +385,13 @@ def handle_search(sp, args):
     if not args:
         print("Usage: search <song name>")
         return
+    # CLI keeps free-text search for terminal-only workflows.
     query = " ".join(args)
 
     try:
-        tracks = search_tracks(sp, query, limit=10)
+        # Use Spotipy's native search API directly (no local wrapper).
+        resp = sp.search(q=query, type="track", limit=10)
+        tracks = (resp.get("tracks") or {}).get("items") or []
 
         if not tracks:
             print("No results found.")
@@ -315,6 +405,7 @@ def handle_search(sp, args):
         choice = input("Enter the number of the track to play (or 'cancel'): ").strip()
         if not choice or choice.lower() == "cancel":
             return
+        # Convert 1-based user choice to 0-based index.
         index = int(choice) - 1
         if index < 0 or index >= len(tracks):
             print("Invalid choice.")

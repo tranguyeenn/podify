@@ -1,3 +1,5 @@
+"""Interactive command-line loop for Podify controls."""
+
 from colorama import init
 
 from podify.commands import current, handle_search, handle_volume, next_track, pause, play, previous
@@ -9,6 +11,7 @@ init(autoreset=True)
 
 
 def main() -> None:
+    # Main REPL loop for typed Spotify commands.
     print("Type 'help' to see available commands.")
 
     while True:
@@ -17,10 +20,12 @@ def main() -> None:
         if not user_input:
             continue
 
+        # Tokenize into command + optional args.
         parts = user_input.split()
         cmd = parts[0].lower()
         args = parts[1:]
 
+        # Command dispatcher for CLI mode.
         if cmd in ["help", "h"]:
             show_help()
         elif cmd == "now":

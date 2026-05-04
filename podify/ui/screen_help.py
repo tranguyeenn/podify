@@ -1,15 +1,19 @@
+"""Help screen showing core keyboard controls."""
+
 from podify.ui.drawing import frame_outline_row, safe_addstr
 from podify.ui.frame import draw_frame
 from podify.ui.text_layout import frame_bottom_rule
 
 
 def draw_help(stdscr):
+    # Shared frame shell ensures consistent look with other screens.
     frame = draw_frame(stdscr, "Help")
     if frame == (None, None):
         return
 
     start_y, start_x = frame
 
+    # Keep this list aligned with key behavior in input_handlers.py.
     lines = [
         "w / up       move up",
         "s / down     move down",

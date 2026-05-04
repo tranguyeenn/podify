@@ -1,3 +1,5 @@
+"""Now Playing screen with transport key hints."""
+
 from podify.ui.drawing import frame_outline_row, safe_addstr
 from podify.ui.frame import draw_frame, draw_wheel
 from podify.ui.readouts import now_play_line
@@ -5,11 +7,13 @@ from podify.ui.text_layout import frame_bottom_rule
 
 
 def draw_now_playing(stdscr):
+    # Frame first; this also enforces minimum terminal size.
     frame = draw_frame(stdscr, "Now Playing")
     if frame == (None, None):
         return
 
     start_y, start_x = frame
+    # Cached readout keeps this screen responsive while redrawing often.
     song = now_play_line(force=False)
 
     frame_outline_row(stdscr, start_y + 3, start_x, "Track:")

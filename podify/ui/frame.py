@@ -1,3 +1,5 @@
+"""Shared frame and wheel rendering for iPod-style screens."""
+
 import curses
 
 from podify.ui.constants import FRAME_INNER_W, WHEEL_INNER_W
@@ -6,9 +8,11 @@ from podify.ui.text_layout import frame_mid_rule, frame_top_rule, inner_center, 
 
 
 def draw_frame(stdscr, title):
+    # Clear per frame so each screen draws from a known blank state.
     stdscr.clear()
     height, width = stdscr.getmaxyx()
 
+    # Hard minimum keeps borders/wheel from clipping.
     if height < 28 or width < 50:
         safe_addstr(stdscr, 1, 2, "Make terminal bigger.")
         safe_addstr(stdscr, 2, 2, f"Current: {width}x{height}")
@@ -30,6 +34,7 @@ def draw_frame(stdscr, title):
 
 
 def draw_wheel(stdscr, y: int, frame_left_x: int):
+    # Draw decorative click-wheel under the content frame.
     wt = WHEEL_INNER_W + 2
     bx = frame_left_x + max(0, (FRAME_INNER_W + 2 - wt) // 2)
     lbl_m = "MENU"

@@ -1,3 +1,5 @@
+"""Queue preview screen with refresh and scrolling."""
+
 from podify.commands import QUEUE_PREVIEW_MAX
 
 from podify.ui import state
@@ -9,6 +11,7 @@ from podify.ui.text_layout import ellip_tw, frame_bottom_rule
 
 
 def draw_queue(stdscr):
+    # Draw frame shell and normalize scroll before rendering rows.
     frame = draw_frame(stdscr, "Queue")
     if frame == (None, None):
         return
@@ -20,6 +23,7 @@ def draw_queue(stdscr):
     frame_outline_row(stdscr, start_y + 3, start_x, head)
     ry = start_y + 4
 
+    # Body supports error, empty, and filled queue states.
     if state.queue_error:
         frame_outline_row(stdscr, ry, start_x, ellip_tw(state.queue_error, FRAME_INNER_W))
         ry += 1
@@ -35,6 +39,7 @@ def draw_queue(stdscr):
                 frame_outline_row(stdscr, ry, start_x, "")
             ry += 1
 
+    # Footer switches between row-range status and simple controls.
     if state.queue_rows and len(state.queue_rows) > QUEUE_VISIBLE_ROWS:
         lo = state.queue_scroll + 1
         hi = min(state.queue_scroll + QUEUE_VISIBLE_ROWS, len(state.queue_rows))

@@ -1,9 +1,12 @@
+"""Unicode-aware text width, truncation, and frame-line helpers."""
+
 import unicodedata
 
 from podify.ui.constants import FRAME_INNER_W
 
 
 def char_display_width(ch: str) -> int:
+    # Handle both scalar chars and multi-char strings recursively.
     if len(ch) != 1:
         return sum(char_display_width(x) for x in ch)
     return 2 if unicodedata.east_asian_width(ch) in ("F", "W") else 1
@@ -30,6 +33,7 @@ def truncate_to_width(s: str, cols: int) -> str:
 
 
 def ellip_tw(s: str, cols: int) -> str:
+    # Normalize whitespace then truncate with ASCII ellipsis when needed.
     one = " ".join(str(s).replace("\n", " ").replace("\r", " ").split())
     if text_width(one) <= cols:
         return one
@@ -43,10 +47,12 @@ def ellip_tw(s: str, cols: int) -> str:
 
 
 def inner_left(s: str) -> str:
+    # Fit content into frame inner width (left aligned).
     return pad_to_width(ellip_tw(s, FRAME_INNER_W), FRAME_INNER_W)
 
 
 def inner_center(s: str) -> str:
+    # Fit content into frame inner width (center aligned).
     t = ellip_tw(s, FRAME_INNER_W)
     g = FRAME_INNER_W - text_width(t)
     if g <= 0:

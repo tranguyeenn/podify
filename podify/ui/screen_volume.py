@@ -1,3 +1,5 @@
+"""Volume screen for Spotify volume input plus Mac nudges."""
+
 from podify.ui import state
 from podify.ui.drawing import frame_outline_row, safe_addstr
 from podify.ui.frame import draw_frame
@@ -6,12 +8,14 @@ from podify.ui.text_layout import ellip_tw, frame_bottom_rule
 
 
 def draw_volume(stdscr):
+    # Shared frame wrapper for consistent screen layout.
     frame = draw_frame(stdscr, "Volume")
     if frame == (None, None):
         return
 
     start_y, start_x = frame
 
+    # Show editable input buffer + live combined volume meter.
     frame_outline_row(stdscr, start_y + 3, start_x, "Type volume 0-100:")
     frame_outline_row(stdscr, start_y + 4, start_x, state.volume_text or "")
     frame_outline_row(stdscr, start_y + 5, start_x, volume_meter_line(force=False))

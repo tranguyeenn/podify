@@ -1,4 +1,3 @@
 spotipy
 python-dotenv
 colorama
-subprocess

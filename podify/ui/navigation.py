@@ -1,3 +1,5 @@
+"""Menu action handlers that mutate shared UI state."""
+
 from podify.config import sp
 from podify.commands import next_track, pause, play, previous
 
@@ -9,26 +11,38 @@ from podify.ui.readouts import (
     now_play_line,
     volume_meter_line,
 )
-from podify.ui.sync import load_queue_preview, reset_search_pick
+from podify.ui.sync import load_library_preview, load_queue_preview
 from podify.ui.text_layout import ellip_tw
 
 
 def select_main():
+    # Read selected label from static main menu list.
     choice = main_menu[state.selected]
 
     if choice == "Now Playing":
+        # Open Now Playing and force fresh status line.
         state.screen = "now"
         state.status = now_play_line(force=True)
 
     elif choice == "Playback":
+        # Enter playback submenu at top row.
         state.screen = "playback"
         state.selected = 0
 
-    elif choice == "Search":
-        state.screen = "search"
-        reset_search_pick()
+    elif choice == "Library":
+        # Library opens on playlists, then drills into tracks.
+        state.screen = "library"
+        # Preload playlist rows so screen can render immediately.
+        load_library_preview()
+        # Report what was loaded in status area.
+        state.status = (
+            f"{len(state.library_rows)} playlists"
+            if state.library_rows
+            else "No playlists from Spotify"
+        )
 
     elif choice == "Queue":
+        # Queue screen reads Spotify queue snapshot.
         state.screen = "queue"
         load_queue_preview()
         if state.queue_error:
@@ -41,6 +55,7 @@ def select_main():
             )
 
     elif choice == "Volume":
+        # Volume screen uses current meter as initial status.
         state.screen = "volume"
         invalidate_volume_line_cache()
         state.status = volume_meter_line(force=True)
@@ -55,6 +70,7 @@ def select_main():
 
 
 def select_playback():
+    # Resolve highlighted playback action.
     choice = playback_menu[state.selected]
 
     try:
@@ -89,7 +105,8 @@ def select_playback():
 
 
 def go_back():
-    reset_search_pick()
-    state.search_text = ""
+    # Reset transient list cursor and return to home menu.
+    state.library_pick_ix = 0
+    state.library_scroll = 0
     state.screen = "main"
     state.selected = 0

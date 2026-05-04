@@ -1,7 +1,10 @@
+"""macOS output-volume helpers via osascript."""
+
 import subprocess
 
 
 def _osascript(source: str) -> str:
+    # Centralized osascript runner with stderr/stdout surfaced on failure.
     r = subprocess.run(
         ["osascript", "-e", source],
         capture_output=True,
@@ -14,10 +17,12 @@ def _osascript(source: str) -> str:
 
 
 def get_mac_output_volume() -> int:
+    # Reads current system output volume as an integer percent.
     return int(float(_osascript("output volume of (get volume settings)")))
 
 
 def set_mac_output_volume(vol: int) -> int:
+    # Clamp to valid 0-100 then apply through AppleScript.
     v = max(0, min(100, int(vol)))
     subprocess.run(
         ["osascript", "-e", f"set volume output volume {v}"],
@@ -39,6 +44,7 @@ def nudge_mac_volume(delta: int, step: int = 6) -> int:
 
 
 def handle_mac_volume(args):
+    # CLI handler supports absolute values and relative up/down actions.
     if len(args) != 1:
         print("Usage: macvol <0-100|up|down>")
         return None

@@ -1,3 +1,5 @@
+"""Short-lived cached readouts for now-playing and volume lines."""
+
 import time
 
 from podify.config import sp
@@ -6,6 +8,7 @@ from podify.mac_controls import get_mac_output_volume
 
 from podify.ui.constants import DISPLAY_TTL_S
 
+# Cache values + expiry reduce API churn during rapid redraws.
 _now_play_cached = ""
 _now_play_expiry = 0.0
 
@@ -14,16 +17,19 @@ _vol_line_expiry = 0.0
 
 
 def invalidate_now_playing_cache():
+    # Force a fresh Spotify read on next now_play_line() call.
     global _now_play_expiry
     _now_play_expiry = 0.0
 
 
 def invalidate_volume_line_cache():
+    # Force a fresh volume read on next volume_meter_line() call.
     global _vol_line_expiry
     _vol_line_expiry = 0.0
 
 
 def get_song():
+    # Friendly wrapper around commands.current() with stable fallback text.
     try:
         result = current(sp)
         return str(result) if result else "No song playing."
@@ -32,6 +38,7 @@ def get_song():
 
 
 def format_volume_levels() -> str:
+    # Compose single status line combining Spotify + Mac volume values.
     pct = get_spotify_volume_percent(sp)
     if pct is None:
         s_part = "Spotify ?"
@@ -47,6 +54,7 @@ def format_volume_levels() -> str:
 
 
 def now_play_line(force=False) -> str:
+    # Return cached value unless forced or expired.
     global _now_play_cached, _now_play_expiry
     t = time.monotonic()
     if not force and t < _now_play_expiry:
@@ -60,6 +68,7 @@ def now_play_line(force=False) -> str:
 
 
 def volume_meter_line(force=False) -> str:
+    # Return cached value unless forced or expired.
     global _vol_line_cached, _vol_line_expiry
     t = time.monotonic()
     if not force and t < _vol_line_expiry:

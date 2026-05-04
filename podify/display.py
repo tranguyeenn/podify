@@ -1,4 +1,7 @@
+"""CLI-only text rendering helpers (help menu, etc.)."""
+
 def show_help():
+    # Keep this in sync with commands exposed in cli.py.
     print("""
     Commands:
         now              Show current song
