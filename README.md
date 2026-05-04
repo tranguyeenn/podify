@@ -2,8 +2,8 @@
 Control Spotify directly from your terminal like a civilized engineer.
 
 ## Features
-* Play / Pause music
-* Skip to next / previous track
+* Play/Pause music
+* Skip to next/previous track
 * View currently playing song
 * Control playback from terminal
 * Colored terminal output (because we have standards)
@@ -127,14 +127,14 @@ python3 -m podify.ui
 
 Available commands:
 ```text
-now       -> show current track
-play      -> resume playback
-pause     -> pause playback
-next      -> skip track
-previous  -> go to previous track
-volume    -> control mac volume or spotify volume
-search    -> search and play
-quit      -> exit
+now         -> show current track
+play        -> resume playback
+pause       -> pause playback
+next        -> skip track
+previous    -> go to previous track
+volume      -> control mac volume or spotify volume
+playlist    -> show playlist
+quit        -> exit
 ```
 
 ## Notes
@@ -150,10 +150,8 @@ quit      -> exit
 * subprocess (control mac volume)
 
 ## Future Improvements
-* Queue management
 * Real-time now-playing updates
 * Keyboard shortcuts
-* Playlist integration
 
 ## License
 MIT
