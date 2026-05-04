@@ -1,6 +1,9 @@
 # 🎧 Podify — Spotify CLI Controller
 Control Spotify directly from your terminal like a civilized engineer.
 
+## Demo Video
+[Demo](https://youtu.be/fNhNktpQlB8)
+
 ## Features
 * Play/Pause music
 * Skip to next/previous track
